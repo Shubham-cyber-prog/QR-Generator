@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Code Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      gap: 30px;
+    }
+    @media (max-width: 768px) {
+      .container { flex-direction: column; }
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input[type="text"], input[type="number"], textarea, select, input[type="file"], input[type="color"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    input[type="color"] {
+      padding: 2px;
+      height: 40px;
+      cursor: pointer;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .color-inputs {
+      display: flex;
+      gap: 15px;
+    }
+    .color-inputs div {
+      flex: 1;
+    }
+    .btn {
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+      font-weight: bold;
+    }
+    .btn:hover {
+      background-color: #005bb5;
+    }
+    .btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .preview-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      border-left: 1px solid #eee;
+      padding-left: 30px;
+    }
+    @media (max-width: 768px) {
+      .preview-pane {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #eee;
+        padding-top: 30px;
+      }
+    }
+    .qr-container {
+      width: 250px;
+      height: 250px;
+      border: 1px dashed #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      background: #fafafa;
+    }
+    .qr-container img {
+      max-width: 100%;
+      max-height: 100%;
+      display: none;
+    }
+    .download-btn {
+      display: none;
+      background-color: #28a745;
+      margin-top: 10px;
+    }
+    .download-btn:hover {
+      background-color: #218838;
+    }
+    .error {
+      color: #dc3545;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div style="flex: 1;">
+      <h1>QR Code Generator</h1>
+      
+      <div class="form-group">
+        <label for="text">Content / URL</label>
+        <textarea id="text" placeholder="Enter URL or text here..."></textarea>
+      </div>
+
+      <div class="color-inputs form-group">
+        <div>
+          <label for="color">Foreground</label>
+          <input type="color" id="color" value="#000000">
+        </div>
+        <div>
+          <label for="bgColor">Background</label>
+          <input type="color" id="bgColor" value="#ffffff">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="size">Size (px)</label>
+        <input type="number" id="size" value="300" min="150" max="1000">
+      </div>
+
+      <div class="form-group">
+        <label for="errorLevel">Error Correction</label>
+        <select id="errorLevel">
+          <option value="L">Low</option>
+          <option value="M" selected>Medium</option>
+          <option value="Q">High</option>
+          <option value="H">Max</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="format">Format</label>
+        <select id="format">
+          <option value="png" selected>PNG Image</option>
+          <option value="svg">SVG Vector</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="logo">Center Logo (PNG output only)</label>
+        <input type="file" id="logo" accept="image/*">
+      </div>
+
+      <button id="generateBtn" class="btn">Generate QR Code</button>
+      <div id="errorMsg" class="error"></div>
+    </div>
+
+    <div class="preview-pane">
+      <div class="qr-container">
+        <span id="placeholder">Preview will appear here</span>
+        <img id="qrImg" alt="QR Code" />
+      </div>
+      <button id="downloadBtn" class="btn download-btn">Download</button>
+    </div>
+  </div>
+
+  <script>
+    const textInput = document.getElementById('text');
+    const colorInput = document.getElementById('color');
+    const bgColorInput = document.getElementById('bgColor');
+    const sizeInput = document.getElementById('size');
+    const errorLevelSelect = document.getElementById('errorLevel');
+    const formatSelect = document.getElementById('format');
+    const logoInput = document.getElementById('logo');
+    const generateBtn = document.getElementById('generateBtn');
+    const qrImg = document.getElementById('qrImg');
+    const placeholder = document.getElementById('placeholder');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    generateBtn.addEventListener('click', async () => {
+      const text = textInput.value.trim();
+      if (!text) {
+        showError('Please enter some text or a URL.');
+        return;
+      }
+
+      hideError();
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
+
+      try {
+        const formData = new FormData();
+        formData.append('text', text);
+        formData.append('color', colorInput.value);
+        formData.append('bgColor', bgColorInput.value);
+        formData.append('size', sizeInput.value);
+        formData.append('errorLevel', errorLevelSelect.value);
+        formData.append('format', formatSelect.value);
+
+        if (logoInput.files.length > 0) {
+          formData.append('logo', logoInput.files[0]);
+        }
+
+        const res = await fetch('/generate', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Generation failed');
+        }
+
+        qrImg.src = data.qr;
+        qrImg.style.display = 'block';
+        placeholder.style.display = 'none';
+        
+        downloadBtn.style.display = 'block';
+        downloadBtn.textContent = data.format === 'svg' ? 'Download SVG' : 'Download PNG';
+        
+        downloadBtn.onclick = () => {
+          const a = document.createElement('a');
+          a.href = data.qr;
+          a.download = data.format === 'svg' ? 'qrcode.svg' : 'qrcode.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate QR Code';
+      }
+    });
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMsg.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
